@@ -228,7 +228,7 @@ dataset_conf["filelist"]="train.txt"
 #len_samples is 1 for one2one but it can be more than 1 for seq2one modeling
 dataset_conf["len_samples"]=len_samples
 dataset_conf["path_dataset"]="../dataset/"
-dataset_conf['batch_size']=1000
+dataset_conf['batch_size']=1
 
 print("Training dataset ... ")
 isload_data_once4all = True
@@ -258,12 +258,11 @@ conf["path_save"]="save_models"
 conf['epoch']=5
 conf["earlyStopping"]=20
 conf["len_inpout_seq"]=len_samples
-conf["learning_rate"]=0.001
+conf["learning_rate"]=0.0008
 conf["LSTM_conf"]={}
 conf["LSTM_conf"]["hidden_dim"]=128
 
 model = MLP(conf).to(device)
-opt = torch.optim.Adam(model.parameters(), lr=conf["learning_rate"])
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -271,11 +270,14 @@ def count_parameters(model):
 n = count_parameters(model)
 print("Number of parameters: %s" % n)
 
-best_epoch=model.train_all(trainSet,
-                       devSet,
-                       conf['epoch'],
-                       device, 
-                       opt)
+
+opt = torch.optim.RMSprop(model.parameters(), lr=conf["learning_rate"])
+best_dev=model.train_all(trainSet,
+                        devSet,
+                        conf['epoch'],
+                        device, 
+                        opt)
+
 
 # model = torch.load(conf["path_save"] + '/model_2.pt')
 # model.eval()

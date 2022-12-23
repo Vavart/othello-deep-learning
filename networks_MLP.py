@@ -26,6 +26,7 @@ BOARD_SIZE=8
 
 # -- Loss Function
 def loss_fnc(predictions, targets):
+    # return nn.CrossEntropyLoss()(input=predictions,target=targets)
     return nn.CrossEntropyLoss()(input=predictions,target=targets)
 
 
@@ -41,9 +42,9 @@ class MLP(nn.Module):
         self.len_inpout_seq=conf["len_inpout_seq"]
         
         # ------------------ 
-        self.lin1 = nn.Linear(self.board_size*self.board_size, 128)
-        self.lin2 = nn.Linear(128, 128)
-        self.lin3 = nn.Linear(128, self.board_size*self.board_size)
+        self.lin1 = nn.Linear(self.board_size*self.board_size, 512)
+        self.lin2 = nn.Linear(512, 512) # hidden layer
+        self.lin3 = nn.Linear(512, self.board_size*self.board_size)
         self.dropout = nn.Dropout(p=0.1)
         # ------------------ 
         
@@ -140,7 +141,9 @@ class MLP(nn.Module):
         print(f"Recalculing the best DEV: WAcc : {100*_clas_rep['weighted avg']['recall']}%")
 
         
-        return best_epoch
+        # return best_epoch
+        # return best dev accuracy
+        return round(100*best_dev,3)
     
     
     def evalulate(self,test_loader, device):
