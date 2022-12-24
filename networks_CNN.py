@@ -41,24 +41,63 @@ class CNN(nn.Module):
         self.len_inpout_seq=conf["len_inpout_seq"]
         
         # ------------------ 
-        self.lin1 = nn.Linear(self.board_size*self.board_size, 128)
-        self.lin2 = nn.Linear(128, 128)
-        self.lin3 = nn.Linear(128, self.board_size*self.board_size)
-        self.dropout = nn.Dropout(p=0.1)
+        self.conv1 = nn.Conv2d(in_channels=1, out_channels=64, kernel_size=2)
+        self.conv2 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=2)
+        self.conv3 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=2)
+        self.conv4 = nn.Conv2d(in_channels=128, out_channels=128, kernel_size=2)
+        self.conv5 = nn.Conv2d(in_channels=128, out_channels=256, kernel_size=2)
+        self.conv6 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=2)
+        self.conv7 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=2)
+        
+        self.fc1 = nn.Linear(256*1*1, 128)
+        self.fc2 = nn.Linear(128, self.board_size*self.board_size)
         # ------------------ 
         
 
     # ------------------ 
     def forward(self, seq):
-        seq=np.squeeze(seq)
-        if len(seq.shape)>2:
-            seq=torch.flatten(seq, start_dim=1)
-        else:
-            seq=torch.flatten(seq, start_dim=0)
-        x = self.lin1(seq)
-        x = self.lin2(x)
-        outp = self.lin3(x)
-        return F.softmax(outp, dim=-1)
+
+        # seq.size() = [1000, 1, 8, 8] -> [batch_size, in_channels, dimension of input]
+        # print(f"\nSIZE OF SEQ : {seq.size()}")
+
+
+# ===== #
+        # seq=np.squeeze(seq)
+        # if len(seq.shape)>2:
+        #     seq=torch.flatten(seq, start_dim=1)
+        # else:
+        #     seq=torch.flatten(seq, start_dim=0)
+# ===== #
+
+
+        x = F.relu(self.conv1(seq))
+        # torch.Size([1000, 6, 7, 7]) -> [batch_size, output_channel, dim of the x after filter]
+        # print("Shape of x : ", x.size())
+
+        x = F.relu(self.conv2(x))
+        x = F.relu(self.conv3(x))
+        x = F.relu(self.conv4(x))
+        x = F.relu(self.conv5(x))
+        x = F.relu(self.conv6(x))
+        x = F.relu(self.conv7(x))
+        # print("Shape of x : ", x.size())
+
+        # Reshape so it fits
+        x = x.view(-1, 256*1*1)
+        # print("Shape of x : ", x.size())
+
+        x = self.fc1(x)
+        F.relu(x)
+
+        out = self.fc2(x)
+        return out
+
+# ===== #
+        # Output size : (W-F + 2P) / S + 1
+        # With 8x8 input, 2x2 filter (kernel), padding = 0, stride = 1 (by default)
+        # So => (7-2 + 2*0) / 1 + 1 = 
+# ===== #
+
     # ------------------ 
     
     
@@ -83,6 +122,13 @@ class CNN(nn.Module):
             loss_batch = 0
 
             for batch, labels, _ in tqdm(train):
+
+
+                # ------------
+                # print(f"BATCH_SIZE : {batch.size()}")
+                # print(f"LABELS_SIZE : {labels.size()}")
+                # ------------
+
 
                 outputs =self(batch.float().to(device))
                 loss = loss_fnc(outputs,labels.clone().detach().float().to(device))
