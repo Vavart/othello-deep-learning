@@ -15,7 +15,7 @@ import h5py
 import copy
 
 from utile import has_tile_to_flip
-from networks_CNN import CNN
+from networks_CNN_b import CNN_b
 
 BOARD_SIZE=8
 MOVE_DIRS = [(-1, -1), (-1, 0), (-1, +1),
@@ -105,25 +105,18 @@ class CustomDataset(Dataset):
         #read all file name from train/dev/test.txt files
         with open(self.filelist) as f:
             list_files = [line.rstrip() for line in f]
-        self.game_files_name=list_files#[s + ".h5" for s in list_files]    
-
+        self.game_files_name=list_files#[s + ".h5" for s in list_files]       
         
         if self.load_data_once4all:
-            self.samples=np.zeros((len(self.game_files_name)*30,self.len_samples,8,8), dtype=int) # shape 180030,1,8,8
-            self.outputs=np.zeros((len(self.game_files_name)*30,8*8), dtype=int) # 180030,64
+            self.samples=np.zeros((len(self.game_files_name)*30,self.len_samples,8,8), dtype=int)
+            self.outputs=np.zeros((len(self.game_files_name)*30,8*8), dtype=int)
             idx=0
-
             for gm_idx,gm_name in tqdm(enumerate(self.game_files_name)):
-
-
                 h5f = h5py.File(self.path_dataset+gm_name,'r')
-                game_log = np.array(h5f[gm_name.replace(".h5","")][:]) # get the whole game of shape 2,60,8,8 (one for the board status, the other for the moves)
+                game_log = np.array(h5f[gm_name.replace(".h5","")][:])
                 h5f.close()
-                last_board_state=copy.copy(game_log[0][-1]) # the board state at the end of the game (so the 60th move) of shape 8,8
-                
+                last_board_state=copy.copy(game_log[0][-1])
                 is_black_winner=isBlackWinner(game_log[1][-1],last_board_state)
-
-                
                 for sm_idx in range(30):
                     if is_black_winner:
                         end_move=2*sm_idx
@@ -151,7 +144,28 @@ class CustomDataset(Dataset):
                     self.samples[idx]=features
                     self.outputs[idx]=np.array(game_log[1][end_move]).flatten()
                     idx+=1
-
+        else:
+        
+            #creat a list of samples as SampleManager objcets
+            self.samples=np.empty(len(self.game_files_name)*30, dtype=object)
+            idx=0
+            for gm_idx,gm_name in tqdm(enumerate(self.game_files_name)):
+                h5f = h5py.File(self.path_dataset+gm_name,'r')
+                game_log = np.array(h5f[gm_name.replace(".h5","")][:])
+                h5f.close()
+                last_board_state=copy.copy(game_log[0][-1])
+                is_black_winner=isBlackWinner(game_log[1][-1],last_board_state)
+                for sm_idx in range(30):
+                    if is_black_winner:
+                        end_move=2*sm_idx
+                    else:
+                        end_move=2*sm_idx+1
+                    self.samples[idx]=SampleManager(gm_name,
+                                                    self.path_dataset,
+                                                    end_move,
+                                                    self.len_samples,
+                                                    is_black_winner)
+                    idx+=1
         
         #np.random.shuffle(self.samples)
         print(f"Number of samples : {len(self.samples)}")
@@ -164,11 +178,34 @@ class CustomDataset(Dataset):
         if self.load_data_once4all:
             features=self.samples[idx]
             y=self.outputs[idx]
+        else:
 
+            h5f = h5py.File(self.samples[idx].file_dir+self.samples[idx].game_name,'r')
+            game_log = np.array(h5f[self.samples[idx].game_name.replace(".h5","")][:])
+            h5f.close()
+
+            if self.samples[idx].end_move+1 >= self.samples[idx].len_moves:
+                features=game_log[0][self.samples[idx].end_move-self.samples[idx].len_moves+1:
+                                     self.samples[idx].end_move+1]
+            else:
+                features=[self.starting_board_stat]
+                #Padding starting board state before first index of sequence
+                for i in range(self.samples[idx].len_moves-self.samples[idx].end_move-2):
+                    features.append(self.starting_board_stat)
+                #adding the inital of game as the end of sequence sample
+                for i in range(self.samples[idx].end_move+1):
+                    features.append(game_log[0][i])
+
+            #if black is the current player the board should be multiplay by -1    
+            if self.samples[idx].isBlackPlayer:       
+                features=np.array([features],dtype=float)*-1
+            else:
+                features=np.array([features],dtype=float)
+
+            #y is a move matrix
+            y=np.array(game_log[1][self.samples[idx].end_move]).flatten()
+            
         return features,y,self.len_samples
-
-    def get_output_length(self) :
-        return len (self.outputs)
 
 
 # -- Device
@@ -218,14 +255,14 @@ devSet = DataLoader(ds_dev, batch_size=dataset_conf['batch_size'])
 conf={}
 conf["board_size"]=BOARD_SIZE
 conf["path_save"]="save_models"
-conf['epoch']=5
+conf['epoch']=200
 conf["earlyStopping"]=20
 conf["len_inpout_seq"]=len_samples
 conf["learning_rate"]=0.001
 conf["LSTM_conf"]={}
 conf["LSTM_conf"]["hidden_dim"]=128
 
-model = CNN(conf).to(device)
+model = CNN_b(conf).to(device)
 opt = torch.optim.Adam(model.parameters(), lr=conf["learning_rate"])
 
 def count_parameters(model):
