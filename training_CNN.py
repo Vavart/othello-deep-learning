@@ -104,17 +104,22 @@ class CustomDataset(Dataset):
         
         #read all file name from train/dev/test.txt files
         with open(self.filelist) as f:
-            list_files = [line.rstrip() for line in f]
-        self.game_files_name=list_files#[s + ".h5" for s in list_files]    
+            list_files = [line.rstrip() for line in f] # 6001 files
+        self.game_files_name=list_files#[s + ".h5" for s in list_files]  
 
         
         if self.load_data_once4all:
-            self.samples=np.zeros((len(self.game_files_name)*30,self.len_samples,8,8), dtype=int) # shape 180030,1,8,8
-            self.outputs=np.zeros((len(self.game_files_name)*30,8*8), dtype=int) # 180030,64
+            self.samples=np.zeros((len(self.game_files_name)*30*4,self.len_samples,8,8), dtype=int) # shape 180030,1,8,8
+            self.outputs=np.zeros((len(self.game_files_name)*30*4,8*8), dtype=int) # 180030,64
             idx=0
 
-            for gm_idx,gm_name in tqdm(enumerate(self.game_files_name)):
 
+            
+            for gm_name in tqdm(self.game_files_name):
+
+                # == #
+                currentPos = -1 
+                # == #
 
                 h5f = h5py.File(self.path_dataset+gm_name,'r')
                 game_log = np.array(h5f[gm_name.replace(".h5","")][:]) # get the whole game of shape 2,60,8,8 (one for the board status, the other for the moves)
@@ -123,36 +128,111 @@ class CustomDataset(Dataset):
                 
                 is_black_winner=isBlackWinner(game_log[1][-1],last_board_state)
 
-                
-                for sm_idx in range(30):
-                    if is_black_winner:
-                        end_move=2*sm_idx
-                    else:
-                        end_move=2*sm_idx+1
-                        
-                    if end_move+1 >= self.len_samples:
-                        features=game_log[0][end_move-self.len_samples+1:
-                                             end_move+1]
-                    else:
-                        features=[self.starting_board_stat]
-                        #Padding starting board state before first index of sequence
-                        for i in range(self.len_samples-end_move-2):
-                            features.append(self.starting_board_stat)
-                        #adding the inital of game as the end of sequence sample
-                        for i in range(end_move+1):
-                            features.append(game_log[0][i])
 
-                    #if black is the current player the board should be multiplay by -1    
-                    if is_black_winner:       
-                        features=np.array([features],dtype=int)*-1
-                    else:
-                        features=np.array([features],dtype=int)    
-                        
-                    self.samples[idx]=features
-                    self.outputs[idx]=np.array(game_log[1][end_move]).flatten()
-                    idx+=1
+                for i in range (4) :
+                    # == #
+                    currentPos += 1
+                    # == #
+                    if currentPos == 0 :
 
-        
+                        for sm_idx in range(30):
+
+                            # the black must begin the game, so we need to determine the move corresponding to the color
+                            if is_black_winner:
+                                end_move=2*sm_idx
+                            else:
+                                end_move=2*sm_idx+1
+                                
+                            if end_move+1 >= self.len_samples:
+                                features=game_log[0][end_move-self.len_samples+1:
+                                                    end_move+1]
+
+                            if is_black_winner:       
+                                features=np.array([features],dtype=int)*-1
+                            else:
+                                features=np.array([features],dtype=int)    
+                            
+                            self.samples[idx]=features # self.samples[idx] is shape 1,8,8 features is shape 1,1,8,8
+                            self.outputs[idx]=np.array(game_log[1][end_move]).flatten()
+                            idx+=1
+
+                    elif currentPos == 1 :
+
+                        for sm_idx in range(30):
+
+                            # the black must begin the game, so we need to determine the move corresponding to the color
+                            if is_black_winner:
+                                end_move=2*sm_idx
+                            else:
+                                end_move=2*sm_idx+1
+                                
+                            if end_move+1 >= self.len_samples:
+                                features=game_log[0][end_move-self.len_samples+1:
+                                                    end_move+1]
+
+                            if is_black_winner:       
+                                features=np.array([features],dtype=int)*-1
+                            else:
+                                features=np.array([features],dtype=int)    
+                            
+
+                            features[0][0] = np.rot90(features[0][0], 1)
+                            self.samples[idx]=features # self.samples[idx] is shape 1,8,8 features is shape 1,1,8,8
+                            output = np.rot90(np.array(game_log[1][end_move]), 1)
+                            self.outputs[idx]= output.flatten()
+                            idx+=1
+
+                    elif currentPos == 2 :
+
+                        for sm_idx in range(30):
+
+                            # the black must begin the game, so we need to determine the move corresponding to the color
+                            if is_black_winner:
+                                end_move=2*sm_idx
+                            else:
+                                end_move=2*sm_idx+1
+                                
+                            if end_move+1 >= self.len_samples:
+                                features=game_log[0][end_move-self.len_samples+1:
+                                                    end_move+1]
+
+                            if is_black_winner:       
+                                features=np.array([features],dtype=int)*-1
+                            else:
+                                features=np.array([features],dtype=int)    
+                            
+                            features[0][0] = np.rot90(features[0][0], 2)
+                            self.samples[idx]=features # self.samples[idx] is shape 1,8,8 features is shape 1,1,8,8
+                            output = np.rot90(np.array(game_log[1][end_move]), 2)
+                            self.outputs[idx]= output.flatten()
+                            idx+=1
+
+                    elif currentPos == 3 :
+
+                        for sm_idx in range(30):
+
+                            # the black must begin the game, so we need to determine the move corresponding to the color
+                            if is_black_winner:
+                                end_move=2*sm_idx
+                            else:
+                                end_move=2*sm_idx+1
+                                
+                            if end_move+1 >= self.len_samples:
+                                features=game_log[0][end_move-self.len_samples+1:
+                                                    end_move+1]
+
+                            if is_black_winner:       
+                                features=np.array([features],dtype=int)*-1
+                            else:
+                                features=np.array([features],dtype=int)    
+                            
+                            features[0][0] = np.rot90(features[0][0], 3)
+                            self.samples[idx]=features # self.samples[idx] is shape 1,8,8 features is shape 1,1,8,8
+                            output = np.rot90(np.array(game_log[1][end_move]), 3)
+                            self.outputs[idx]= output.flatten()
+                            idx+=1
+                    
+
         #np.random.shuffle(self.samples)
         print(f"Number of samples : {len(self.samples)}")
         
