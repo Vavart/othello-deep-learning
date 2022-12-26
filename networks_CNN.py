@@ -90,6 +90,7 @@ class CNN(nn.Module):
         F.relu(x)
 
         out = self.fc2(x)
+        # --- Add LEAKY RELU HERE ---
         return out
 
 # ===== #
