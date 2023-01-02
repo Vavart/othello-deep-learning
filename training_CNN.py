@@ -15,7 +15,7 @@ import h5py
 import copy
 
 from utile import has_tile_to_flip
-from networks_CNN import CNN
+from networks_20190137 import CNN
 
 BOARD_SIZE=8
 MOVE_DIRS = [(-1, -1), (-1, 0), (-1, +1),
@@ -298,7 +298,7 @@ devSet = DataLoader(ds_dev, batch_size=dataset_conf['batch_size'])
 conf={}
 conf["board_size"]=BOARD_SIZE
 conf["path_save"]="save_models"
-conf['epoch']=100
+conf['epoch']=50
 conf["earlyStopping"]=20
 conf["len_inpout_seq"]=len_samples
 conf["learning_rate"]=0.001

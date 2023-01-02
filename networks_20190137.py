@@ -56,49 +56,21 @@ class CNN(nn.Module):
 
     # ------------------ 
     def forward(self, seq):
-
-        # seq.size() = [1000, 1, 8, 8] -> [batch_size, in_channels, dimension of input]
-        # print(f"\nSIZE OF SEQ : {seq.size()}")
-
-
-# ===== #
-        # seq=np.squeeze(seq)
-        # if len(seq.shape)>2:
-        #     seq=torch.flatten(seq, start_dim=1)
-        # else:
-        #     seq=torch.flatten(seq, start_dim=0)
-# ===== #
-
-
         x = F.relu(self.conv1(seq))
-        # torch.Size([1000, 6, 7, 7]) -> [batch_size, output_channel, dim of the x after filter]
-        # print("Shape of x : ", x.size())
-
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))
         x = F.relu(self.conv4(x))
         x = F.relu(self.conv5(x))
         x = F.relu(self.conv6(x))
         x = F.relu(self.conv7(x))
-        # print("Shape of x : ", x.size())
 
         # Reshape so it fits
         x = x.view(-1, 256*1*1)
-        # print("Shape of x : ", x.size())
 
-        x = self.fc1(x)
-        F.relu(x)
+        x = F.relu(self.fc1(x))
 
         out = self.fc2(x)
-        # --- Add LEAKY RELU HERE ---
         return out
-
-# ===== #
-        # Output size : (W-F + 2P) / S + 1
-        # With 8x8 input, 2x2 filter (kernel), padding = 0, stride = 1 (by default)
-        # So => (7-2 + 2*0) / 1 + 1 = 
-# ===== #
-
     # ------------------ 
     
     
